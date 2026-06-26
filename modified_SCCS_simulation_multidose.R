@@ -388,24 +388,6 @@ write.csv(data.frame(day=1:365, age_weeks=round((1:365)/7,2),
    }, error=function(e) c(IRR=NA,lower=NA,upper=NA,p=NA,n_cases=nrow(md)))
  }
  
- ### fit modified SCCS; but only start follow up at first vaccine dose, and 
- ###  eliminate any SIDS before vaccination from modeling.
- fit_multidose_d1 <- function(vax, P) {
-   if (is.null(vax) || nrow(vax) < 30) return(c(IRR=NA,lower=NA,upper=NA,p=NA,n_cases=0))
-   vax <- vax[!is.na(vax$d1),]
-   md <- build_md_data(vax, P$OBS_END)
-   md$sta=P$sta
-   tryCatch({
-     mod <- eventdepenexp(indiv=case, astart=rv1, aend=end, aevent=aevent,
-                          adrug=cbind(rv1,rv2,rv3), aedrug=cbind(rv1,rv2,rv3)+P$RISK_LEN,
-                          expogrp=0, sameexpopar=TRUE, agegrp=P$age_bins,
-                          dataformat="multi", data=md)
-     ci <- mod$conf.int; irr <- ci[1,1]; lo <- ci[1,3]; up <- ci[1,4]
-     se <- (log(up)-log(lo))/(2*qnorm(0.975))
-     c(IRR=irr, lower=lo, upper=up, p=2*pnorm(-abs(log(irr)/se)), n_cases=nrow(md))
-   }, error=function(e) c(IRR=NA,lower=NA,upper=NA,p=NA,n_cases=nrow(md)))
- }
- 
  
  ## ===========================================================================
  ## (A) PARAMETERS  — all simulation inputs in one place
@@ -452,10 +434,6 @@ one <- simulate_population(P$N, VAX_single, pmf_s, gen_schedule, P)
  est1 <- fit_multidose(one$cases, P)
  cat(sprintf("Modified SCCS risk-window IRR = %.3f (%.3f, %.3f)  p = %.4g  [n_cases=%d]\n",
              est1["IRR"], est1["lower"], est1["upper"], est1["p"], est1["n_cases"]))
- est1_d1 <- fit_multidose_d1(one$cases, P)
- cat(sprintf("Modified SCCS sta=d1 risk-window IRR = %.3f (%.3f, %.3f)  p = %.4g  [n_cases=%d]\n",
-             est1_d1["IRR"], est1_d1["lower"], est1_d1["upper"], est1_d1["p"], est1_d1["n_cases"]))
-
  
  ## Set up parameters for SIMULATION STUDY
  VAX_effects <- c(1.0, 1.25, 1.5, 1.75, 2.0) # effects for the simulation study
@@ -479,20 +457,12 @@ one <- simulate_population(P$N, VAX_single, pmf_s, gen_schedule, P)
                              p=est["p"], n_cases=est["n_cases"],
                              n_before=out$n_before, n_after=out$n_after,
                              total_SIDS=out$n_total)
-     rows_d1[[r]] <- data.frame(VAX_effect=ve, sim=k,
-                             IRR=est_d1["IRR"], lower=est_d1["lower"], upper=est_d1["upper"],
-                             p=est_d1["p"], n_cases=est_d1["n_cases"],
-                             n_before=out$n_before, n_after=out$n_after,
-                             total_SIDS=out$n_total)
      cat("Data set",k,"\n")
    }
    cat(sprintf("done VAX_effect = %.2f\n", ve))
  }
  results <- do.call(rbind, rows)
- results_d1 <- do.call(rbind, rows_d1)
  write.csv(results, paste("multidose_sccs_results_",file_label,".csv",sep=""), row.names = FALSE)
- write.csv(results, paste("multidose_sccs_d1_results_",file_label,".csv",sep=""), row.names = FALSE)
- 
  ## summary: IRR behavior, error rates, AND population SIDS counts
  summ <- do.call(rbind, lapply(split(results, results$VAX_effect), function(x)
    data.frame(VAX_effect      = x$VAX_effect[1],
@@ -505,18 +475,8 @@ one <- simulate_population(P$N, VAX_single, pmf_s, gen_schedule, P)
               mean_SIDS_after = mean(x$n_after))))                # post-dose-1 (in SCCS)
  print(summ, row.names = FALSE)
  write.csv(summ, paste("multidose_sccs_summary_",file_label,".csv",sep=""), row.names = FALSE)
- summ_d1<- do.call(rbind, lapply(split(results_d1, results_d1$VAX_effect), function(x)
-   data.frame(VAX_effect      = x$VAX_effect[1],
-              mean_IRR        = mean(x$IRR, na.rm=TRUE),
-              median_IRR      = median(x$IRR, na.rm=TRUE),
-              pct_p_lt_.05    = mean(x$p < 0.05, na.rm=TRUE),     # type-I (VAX=1) / power
-              ci_coverage     = mean(x$lower <= x$VAX_effect & x$upper >= x$VAX_effect, na.rm=TRUE),
-              mean_total_SIDS = mean(x$total_SIDS),               # whole-population SIDS
-              mean_SIDS_before= mean(x$n_before),                 # pre-dose-1 (excluded)
-              mean_SIDS_after = mean(x$n_after))))                # post-dose-1 (in SCCS)
- print(summ_d1, row.names = FALSE)
- write.csv(summ_d1, paste("multidose_sccs_d1_summary_",file_label,".csv",sep=""), row.names = FALSE)
- list(modSCCS=summ,modSCCS_d1=summ_d1)
+ 
+ modSCCS=summ
  }
  
 ### Run simulation with main settings
