@@ -55,14 +55,20 @@ dose_distribution <- function(GAP = 60, GAP_SD = 7, maxday = 365L, Nmc = 2e6) {
 # NOTE: You can substitute whatever presumed background incidence by age effect
 #       you want -- just be sure to output the list with pmf_s being vector of
 #       lenght 365 indicating background incidence for that age in days.
+# Update: I have updated the code to allow user to specify any vectors they want
+#       as anchor days and anchor counts to specify their own presumed background
+#       age incidence distribution, with the default being from Traversa.
 # ===========================================================================
-sids_distribution <- function(maxday = 365L, span = 0.2) {
-  anchor_day <- c(6,13,20,27,34,41,48,55,62,69,76,83,90,97,104,111,118,125,132,139,
-                  146,153,160,167,174,181,188,195,205,220,240,260,280,300,330,360,
-                  400,440,480,520,560,600,640,680,715)
-  anchor_cnt <- c(12,16,20,24,31,23,30,28,33,28,37,24,21,24,23,16,15,14,12,18,
-                  21,13,11,9,8,7,6,5,4,3,2.6,2.2,1.9,1.7,1.5,1.4,1.2,1.1,1.0,0.9,
-                  0.9,0.8,0.9,0.9,0.9)
+sids_distribution <- function(  anchor_day = c(6,13,20,27,34,41,48,55,62,69,76,
+                              83,90,97,104,111,118,125,132,139,146,153,160,167,
+                              174,181,188,195,205,220,240,260,280,300,330,360,
+                              400,440,480,520,560,600,640,680,715),   
+                              anchor_cnt = c(12,16,20,24,31,23,30,28,33,28,
+                              37,24,21,24,23,16,15,14,12,18,21,13,11,9,8,7,6,5,
+                              4,3,2.6,2.2,1.9,1.7,1.5,1.4,1.2,1.1,1.0,0.9,0.9,
+                              0.8,0.9,0.9,0.9), maxday = 365L, span = 0.2) 
+{
+
   lo      <- lowess(anchor_day, anchor_cnt, f = span)
   fit_cnt <- pmax(approx(lo$x, lo$y, xout = 1:maxday, rule = 2)$y, 0)   # events/7-day-bin units
   pmf_s   <- fit_cnt / sum(fit_cnt)                                     # per-day density
@@ -285,7 +291,7 @@ write.csv(data.frame(day=1:365, age_weeks=round((1:365)/7,2),
  dose <- dose_distribution(); sids <- sids_distribution()
  plot_theory_diagnostics(dose, sids, VAX = 1.0)   # null: smooth age-confounding decline
  plot_theory_diagnostics(dose, sids, VAX = 1.5)   # shows the 0-2 day spike on top
-
+ 
 ## diagnostics on an individual simulated dataset (uses gen_schedule internally):
  sim <- simulate_multidose(N = 2e6, VAX = 2.0)   # from the simulation script
  plot_sim_diagnostics(sim)                        # 4 pages
@@ -420,10 +426,9 @@ write.csv(data.frame(day=1:365, age_weeks=round((1:365)/7,2),
  ## ===========================================================================
  ## (B) SINGLE DATASET — diagnostics + one analysis
  ## ===========================================================================
-#set.seed(P$seed)
- P$sta=1L
-P$age_bins=age_bins_main
-one <- simulate_population(P$N, VAX_single, pmf_s, gen_schedule, P)
+set.seed(P$seed)
+P$age_bins=age_bins_linear
+one <- simulate_population(P$N, VAX_single, sids_linear$pmf_s, gen_schedule, P)
 
  cat(sprintf("SINGLE DATASET (VAX=%.2g):  total SIDS = %d  |  before dose-1 = %d  |  after (SCCS) = %d\n",
              VAX_single, one$n_total, one$n_before, one$n_after))
@@ -541,4 +546,22 @@ plot_SIDS_age(dose, sids, age_bins_Italy,"Italy",VAX = 1.0)
 plot_SIDS_age(dose, sids, age_bins_Germany,"Germany",VAX = 1.0)   
 plot_SIDS_age(dose, sids, age_bins_UK,"United Kingdom",VAX = 1.0)   
 plot_SIDS_age(dose, sids, age_bins_NZ,"New Zealand",VAX = 1.0)   
+
+
+
+### Now look at linear age effect to show results were not dependent on choice
+### Linear SIDS distribution -- flat 0-->31 and then linearly reducing to 20% by d365
+sids_linear=sids_distribution(anchor_day=c(2,31,100,200,300,400),
+                              anchor_cnt=c(10,10,8.35,5.95,3.56,1.16))
+plot_theory_diagnostics(dose, sids_linear, VAX = 1.0)   # null: linear decline
+plot_theory_diagnostics(dose, sids_linear, VAX = 1.5)   # 50% d1-3 vax effect
+age_bins_linear=c(31,seq(51,360,20))
+plot_SIDS_age(dose, sids_linear, age_bins_linear,"linear",VAX = 1.0)   
+
+### Do simulation with linear age effects and appropriate tight age bins.
+P$age_bins=age_bins_linear
+simulate(P=P,VAX_effects=c(1.0,1.25,1.5,1.75,2.0),K=100,pmf_s=sids_linear$pmf_s,file_label="Linear")
+### Do simulation with linear age effects and no age bins.
+P$age_bins=age_bins_none
+simulate(P=P,VAX_effects=c(1.0,1.25,1.5,1.75,2.0),K=100,pmf_s=sids_linear$pmf_s,file_label="Linear_no_age")
 
