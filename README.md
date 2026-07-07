@@ -10,7 +10,7 @@ Article 2: https://x.com/compose/articles/edit/2071430530743066624
 4. A pdf of an article presenting a response to Jikkyleaks' critiques
 5. R scripts with Jikkyleaks' simulation study and my additions to perform null simulations and include continuous age at dose distributions to correct the two major errors/oversights in his work
 
-Article 3: x.com thread
+Article 3: x.com thread https://x.com/jsm2334/status/2074322827759497323?s=20
 6. Figures of SIDS by age from four published papers, and an overlaid plot of the normalized age distributions for these papers.
 7. An .xls file with the extracted monthly distribution levels for each of the four studies.
 8. Various papers cited in the thread
