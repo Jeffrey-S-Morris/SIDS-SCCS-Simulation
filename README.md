@@ -14,6 +14,6 @@ Article 3: x.com thread
 6. Figures of SIDS by age from four published papers, and an overlaid plot of the normalized age distributions for these papers.
 7. An .xls file with the extracted monthly distribution levels for each of the four studies.
 8. Various papers cited in the thread
-The x.com thread has detailed documentation to generate the .xls file and reproduce the age distribution plots
+9. An unrolled pdf version of the x.com thread has detailed documentation to generate the .xls file and reproduce the age distribution plots
 
 
